@@ -27,5 +27,3 @@ func HMACKeyCreate(ctx context.Context, serviceAccountEmail, projectID string) (
 
 	return *key, nil
 }
-
-

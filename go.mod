@@ -4,7 +4,9 @@ go 1.20
 
 require (
 	cloud.google.com/go/storage v1.39.0
+	github.com/aws/aws-sdk-go-v2 v1.25.3
 	github.com/aws/aws-sdk-go-v2/config v1.27.7
+	github.com/aws/aws-sdk-go-v2/service/iam v1.31.2
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.51.4
 	github.com/fatih/color v1.16.0
 	github.com/spf13/cobra v1.8.0
@@ -16,7 +18,6 @@ require (
 	cloud.google.com/go/compute v1.25.0 // indirect
 	cloud.google.com/go/compute/metadata v0.2.3 // indirect
 	cloud.google.com/go/iam v1.1.6 // indirect
-	github.com/aws/aws-sdk-go-v2 v1.25.3 // indirect
 	github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.6.1 // indirect
 	github.com/aws/aws-sdk-go-v2/credentials v1.17.7 // indirect
 	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.15.3 // indirect
