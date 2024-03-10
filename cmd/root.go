@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/spf13/cobra"
 	"github.com/fatih/color"
+	"github.com/spf13/cobra"
 	"moul.io/banner"
 )
 
@@ -14,7 +14,8 @@ var rootCmd = &cobra.Command{
 	Short: "sorage-synk is a simple tool to transfer data to and fro between local and S3/GCP buckets",
 	Run: func(cmd *cobra.Command, args []string) {
 		color.Green("Welcome To:")
-		color.Cyan(banner.Inline("storage-synk"))	},
+		color.Cyan(banner.Inline("storage-synk"))
+	},
 }
 
 func Execute() {
