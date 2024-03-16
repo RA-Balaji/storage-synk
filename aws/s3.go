@@ -49,7 +49,7 @@ func S3BucketGet(ctx context.Context, region, bucketName string) (*types.Bucket,
 
 	var res *types.Bucket
 	for _, bucket := range bucketList.Buckets {
-		if bucket.Name == &bucketName {
+		if *bucket.Name == bucketName {
 			res = &bucket
 			break
 		}

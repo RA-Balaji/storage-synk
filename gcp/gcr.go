@@ -18,7 +18,7 @@ func HMACKeyCreate(ctx context.Context, serviceAccountEmail, projectID string) (
 	// Generate the HMAC key.
 	key, err := client.CreateHMACKey(ctx, projectID, serviceAccountEmail)
 	if err != nil {
-		return storage.HMACKey{}, fmt.Errorf("failed to create HMAC key: %v", err)
+		return storage.HMACKey{}, fmt.Errorf("Failed to create HMAC key: %v", err)
 	}
 
 	fmt.Printf("HMAC Key created successfully:\n")
