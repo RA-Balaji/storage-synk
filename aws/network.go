@@ -66,6 +66,32 @@ func getVpcName(bucketName string) string {
 	return bucketName + "-storagesynk-vpc"
 }
 
+func UpdateVpcAttribute(ctx context.Context, region, vpcID string) error {
+	client, err := newEC2Client(region)
+	if err != nil {
+		return fmt.Errorf("Error creating ec2 client: %v", err)
+	}
+	_, err = client.ModifyVpcAttribute(ctx, &ec2.ModifyVpcAttributeInput{
+		VpcId: aws.String(vpcID),
+		EnableDnsSupport: &types.AttributeBooleanValue{
+			Value: aws.Bool(true),
+		},
+	})
+	if err != nil {
+		return fmt.Errorf("Error updating VPC attribute: %v", err)
+	}
+	_, err = client.ModifyVpcAttribute(ctx, &ec2.ModifyVpcAttributeInput{
+		VpcId: aws.String(vpcID),
+		EnableDnsHostnames: &types.AttributeBooleanValue{
+			Value: aws.Bool(true),
+		},
+	})
+	if err != nil {
+		return fmt.Errorf("Error updating VPC attribute: %v", err)
+	}
+	return nil
+}
+
 func SubnetCreate(ctx context.Context, region, bucketName string, subnetZones []string) error {
 	client, err := newEC2Client(region)
 	if err != nil {
@@ -98,6 +124,70 @@ func SubnetCreate(ctx context.Context, region, bucketName string, subnetZones []
 	}
 
 	return nil
+}
+
+func getSubnet(ctx context.Context, region, bucketName string) ([]types.Subnet, error) {
+	output := []types.Subnet{}
+	client, err := newEC2Client(region)
+	if err != nil {
+		return []types.Subnet{}, err
+	}
+	snetName := bucketName + "-storagesynk-snet"
+	for i := 1; i <= 2; i++ {
+		snet, err := client.DescribeSubnets(ctx, &ec2.DescribeSubnetsInput{
+			Filters: nameTagFilter(fmt.Sprintf("%s-%d", snetName, i)),
+		})
+		if err != nil {
+			return []types.Subnet{}, err
+		}
+		output = append(output, snet.Subnets...)
+	}
+
+	if err != nil {
+		return []types.Subnet{}, err
+	}
+
+	if len(output) < 2 {
+		return []types.Subnet{}, fmt.Errorf("[!(can)-find-subnet-err] %v", snetName)
+	}
+	return output[0:2], nil
+}
+
+func VPCEndpointCreate(ctx context.Context, region, bucketName string) (types.VpcEndpoint, error) {
+	client, err := newEC2Client(region)
+	if err != nil {
+		return types.VpcEndpoint{}, fmt.Errorf("Error creating ec2 client: %v", err)
+	}
+	vpc, err := getVpc(ctx, region, bucketName)
+	if err != nil {
+		return types.VpcEndpoint{}, err
+	}
+	subnets, err := getSubnet(ctx, region, bucketName)
+	if err != nil {
+		return types.VpcEndpoint{}, err
+	}
+
+	err = UpdateVpcAttribute(ctx, region, *vpc.VpcId)
+	if err != nil {
+		return types.VpcEndpoint{}, err
+	}
+
+	inp := ec2.CreateVpcEndpointInput{
+		ServiceName:     aws.String(getVPCEndpointServiceName(region)),
+		VpcEndpointType: types.VpcEndpointTypeInterface,
+		VpcId:           vpc.VpcId,
+		DnsOptions: &types.DnsOptionsSpecification{
+			DnsRecordIpType: types.DnsRecordIpTypeIpv4,
+		},
+		SubnetIds:         []string{*subnets[0].SubnetId, *subnets[1].SubnetId},
+		TagSpecifications: nameTag(getVpcEpName(bucketName), types.ResourceTypeVpcEndpoint),
+	}
+
+	output, err := client.CreateVpcEndpoint(ctx, &inp)
+	if err != nil {
+		return types.VpcEndpoint{}, fmt.Errorf("Error Creating VPC Endpoint: %v", err)
+	}
+	return *output.VpcEndpoint, nil
 }
 
 func getSubnetName(bucketName string, id int) string {
@@ -147,4 +237,12 @@ func zip[T, U any](ts []T, us []U) []Pair[T, U] {
 		pairs[i] = Pair[T, U]{ts[i], us[i]}
 	}
 	return pairs
+}
+
+func getVPCEndpointServiceName(region string) string {
+	return fmt.Sprintf("com.amazonaws.%s.datasync", region)
+}
+
+func getVpcEpName(bucketName string) string {
+	return fmt.Sprintf("%s-storagesynk-ep", bucketName)
 }

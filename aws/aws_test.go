@@ -8,7 +8,7 @@ import (
 
 const (
 	testRegion     = "us-east-1"
-	testBucketName = "test-bucket"
+	testBucketName = "balaji-tests"
 	testProject    = "947123667364"
 )
 
@@ -51,5 +51,22 @@ func TestSubnetCreate(t *testing.T) {
 	if err != nil {
 		log.Printf("Error creating Subnet(s): %v", err)
 		t.Fatal()
+	}
+}
+
+func TestVpcEndpointCreate(t *testing.T) {
+	_, err := VPCEndpointCreate(context.Background(), testRegion, testBucketName)
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestSSMParameterGet(t *testing.T) {
+	ssm, err := SsmParameterGet(context.Background(), testRegion)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if *ssm.Parameter.Name != dataSyncAmi {
+		t.Fatalf("Parameter: %s", *ssm.Parameter.Name)
 	}
 }
