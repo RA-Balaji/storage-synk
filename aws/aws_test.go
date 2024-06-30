@@ -81,7 +81,7 @@ func TestS3FolderUpload(t *testing.T) {
 	ctx := context.Background()
 
 	// Create bucket if it doesn't exist
-	err := S3BucketCreate(ctx, testRegion, testBucketName)
+	err := S3BucketCreate(ctx, testRegion, "balaji-tests-2")
 
 	// Create a temporary directory and some files
 	tmpDir, err := os.MkdirTemp("", "testdir")
@@ -109,7 +109,9 @@ func TestS3FolderUpload(t *testing.T) {
 
 	// Perform the upload
 	err = S3FolderUpload(ctx, testRegion, "balaji-tests-2", tmpDir, &wg, sem)
-	assert.NoError(t, err)
+	if err != nil {
+		t.Fatalf("Error: %v", err)
+	}
 
 	// Wait for all goroutines to finish
 	wg.Wait()
