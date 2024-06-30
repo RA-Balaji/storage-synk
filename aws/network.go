@@ -223,7 +223,7 @@ func nameTagFilter(resourceName string) []types.Filter {
 	return filters
 }
 
-type Pair[T, U any] struct {
+type Pair[T any, U any] struct {
 	First  T
 	Second U
 }
