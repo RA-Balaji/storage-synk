@@ -103,7 +103,7 @@ func S3FileUpload(ctx context.Context, region, bucketName, fileName, key string)
 	// TODO: Use Multi-part upload for files > 100 Mb
 	var buffer bytes.Buffer
 	if _, err := io.Copy(&buffer, file); err != nil {
-	 fmt.Errorf("Error reading file: [%v]", err)
+		fmt.Errorf("Error reading file: [%v]", err)
 	}
 
 	// Upload the file to S3

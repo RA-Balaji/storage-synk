@@ -3,10 +3,13 @@ package gcp
 import (
 	"context"
 	"fmt"
-	//"sync"
+	"io"
+	"os"
+	"path/filepath"
+	"sync"
 
 	"cloud.google.com/go/storage"
-	//"google.golang.org/api/iterator"
+	"google.golang.org/api/iterator"
 )
 
 func HMACKeyCreate(ctx context.Context, serviceAccountEmail, projectID string) (storage.HMACKey, error) {
@@ -30,41 +33,66 @@ func HMACKeyCreate(ctx context.Context, serviceAccountEmail, projectID string) (
 	return *key, nil
 }
 
-// func GcsDownload(ctx context.Context, destination, bucketName string) error {
-// 	client, err := storage.NewClient(ctx)
-// 	if err != nil {
-// 		return fmt.Errorf("failed to create storage client: %v", err)
-// 	}
-// 	defer client.Close()
+func GcsDownload(ctx context.Context, destination, bucketName, destinationPath string) error {
 
-// 	bucket := client.Bucket(bucketName)
+	localFolder := filepath.Join(destinationPath, bucketName)
+	if _, err := os.Stat(localFolder); os.IsNotExist(err) {
+		err := os.Mkdir(localFolder, os.ModeDir)
+		if err != nil {
+			return fmt.Errorf(
+				"Error creating directory [%s] at [%s] Err:[%v]", bucketName, destinationPath, err)
+		}
+	}
 
-// 	var wg sync.WaitGroup
-//     //var mu sync.Mutex
+	client, err := storage.NewClient(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to create storage client: %v", err)
+	}
+	defer client.Close()
 
-// 	it := bucket.Objects(ctx, nil)
-//     for {
-//         objAttrs, err := it.Next()
-//         if err == iterator.Done {
-//             break
-//         }
-//         if err != nil {
-//             return fmt.Errorf("Error iterating Objects: %v", err)
-//         }
+	bucket := client.Bucket(bucketName)
 
-//         // Increment the WaitGroup counter
-//         wg.Add(1)
+	var wg sync.WaitGroup
 
-// 		go func(objectName string) {
-// 			defer wg.Done()
+	it := bucket.Objects(ctx, nil)
+	for {
+		objAttrs, err := it.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			return fmt.Errorf("Error iterating Objects: %v", err)
+		}
 
-// 			reader, err := bucket.Object(objectName).NewReader(ctx)
-// 			if err != nil {
+		// Increment the WaitGroup counter
+		wg.Add(1)
 
-// 			}
+		// TODO: Implement multipart download for larger files
+		go func(objectName string) error {
+			defer wg.Done()
 
-// 		}(objAttrs.Name)
-// 	}
+			reader, err := bucket.Object(objectName).NewReader(ctx)
+			if err != nil {
+				return fmt.Errorf("Error reading object [%s], err: [%v]", objectName, err)
+			}
+			defer reader.Close()
 
-// 	return nil
-// }
+			// Create a local file to save the downloaded content
+			filePath := filepath.Join(localFolder, objectName)
+			outFile, err := os.Create(filePath)
+			if err != nil {
+				return fmt.Errorf("Error creating file [%s], Err:[%v]", filePath, err)
+			}
+			defer outFile.Close()
+
+			// Copy the content from the GCS object to the local file
+			if _, err := io.Copy(outFile, reader); err != nil {
+				return fmt.Errorf("io.Copy: %v", err)
+			}
+
+			return nil
+		}(objAttrs.Name)
+	}
+
+	return nil
+}
