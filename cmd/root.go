@@ -24,3 +24,7 @@ func Execute() {
 		os.Exit(1)
 	}
 }
+
+func init() {
+	rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+}
