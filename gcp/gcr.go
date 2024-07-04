@@ -64,7 +64,6 @@ func GcsDownload(ctx context.Context, destination, bucketName, destinationPath s
 			return fmt.Errorf("Error iterating Objects: %v", err)
 		}
 
-		// Increment the WaitGroup counter
 		wg.Add(1)
 
 		// TODO: Implement multipart download for larger files
