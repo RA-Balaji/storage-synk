@@ -17,8 +17,9 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 )
 
-func newS3Client(region string) (*s3.Client, error) {
-	cfg, err := config.LoadDefaultConfig(context.Background(), config.WithRegion(region))
+func newS3Client(ctx context.Context, profile string) (*s3.Client, error) {
+	cfg, err := config.LoadDefaultConfig(context.TODO(),
+		config.WithSharedConfigProfile(profile))
 	if err != nil {
 		return nil, err
 	}
@@ -26,8 +27,8 @@ func newS3Client(region string) (*s3.Client, error) {
 	return s3.NewFromConfig(cfg), nil
 }
 
-func S3BucketCreate(ctx context.Context, region, bucketName string) error {
-	client, err := newS3Client(region)
+func S3BucketCreate(ctx context.Context, profile, bucketName string) error {
+	client, err := newS3Client(ctx, profile)
 	if err != nil {
 		return fmt.Errorf("Error initializing s3client: %v", err)
 	}
@@ -44,8 +45,8 @@ func S3BucketCreate(ctx context.Context, region, bucketName string) error {
 	return nil
 }
 
-func S3BucketGet(ctx context.Context, region, bucketName string) (*types.Bucket, error) {
-	client, err := newS3Client(region)
+func S3BucketGet(ctx context.Context, profile, bucketName string) (*types.Bucket, error) {
+	client, err := newS3Client(ctx, profile)
 	if err != nil {
 		return nil, fmt.Errorf("Error initializing s3client: %v", err)
 	}
@@ -69,8 +70,8 @@ func S3BucketGet(ctx context.Context, region, bucketName string) (*types.Bucket,
 	return res, nil
 }
 
-func S3BucketDelete(ctx context.Context, region, bucketName string) error {
-	client, err := newS3Client(region)
+func S3BucketDelete(ctx context.Context, profile, bucketName string) error {
+	client, err := newS3Client(ctx, profile)
 	if err != nil {
 		return fmt.Errorf("Error initializing s3client: %v", err)
 	}
@@ -87,8 +88,8 @@ func S3BucketDelete(ctx context.Context, region, bucketName string) error {
 	return nil
 }
 
-func S3FileUpload(ctx context.Context, region, bucketName, fileName, key string) error {
-	client, err := newS3Client(region)
+func S3FileUpload(ctx context.Context, profile, bucketName, fileName, key string) error {
+	client, err := newS3Client(ctx, profile)
 	if err != nil {
 		return fmt.Errorf("Error initializing s3client: %v", err)
 	}

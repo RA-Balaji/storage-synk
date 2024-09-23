@@ -1,9 +1,13 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
+	"os"
 	"regexp"
 
+	"github.com/RA-Balaji/storage-synk/aws"
+	"github.com/RA-Balaji/storage-synk/gcp"
 	"github.com/spf13/cobra"
 )
 
@@ -26,10 +30,27 @@ var cpCmd = &cobra.Command{
 		if err != nil {
 			return fmt.Errorf("Destination incorrect, error: %v", err)
 		}
+		tmpPath, err := cmd.Flags().GetString("destination")
+		if err != nil {
+			return fmt.Errorf("Error loading temp path: %v", err)
+		}
+		awsProfile, err := cmd.Flags().GetString("aws-profile")
+		if err != nil {
+			return fmt.Errorf("Error parsing aws-profile: %v", err)
+		}
 
-		_, err = validateSrcDst(source, destination)
+		err = validateSrcDst(source, destination)
 		if err != nil {
 			return err
+		}
+
+		ctx := context.Background()
+		if source == cspGcp && destination == cspAws {
+			err = TransferFromGcpToAWS(
+				ctx, awsProfile, source, destination, tmpPath)
+			if err != nil {
+				return err
+			}
 		}
 
 		return nil
@@ -41,25 +62,35 @@ func init() {
 
 	cpCmd.Flags().StringP("source", "s", "", "Source bucket path")
 	cpCmd.Flags().StringP("destination", "d", "", "Destination bucket path")
+	cpCmd.PersistentFlags().Lookup("download-location").NoOptDefVal = os.TempDir()
+	cpCmd.PersistentFlags().Lookup("aws-profile").NoOptDefVal = "default"
 }
 
-type SrcDst struct {
-	Source      string
-	Destination string
-}
-
-func validateSrcDst(src, dst string) (SrcDst, error) {
-	var out SrcDst
+func validateSrcDst(src, dst string) error {
 	var validGCPBucketPath = regexp.MustCompile(`^gs://[a-zA-Z0-9._-]+(/[a-zA-Z0-9._-]+)*$`)
 	var validS3Path = regexp.MustCompile(`^s3://[a-zA-Z0-9._-]+(/[a-zA-Z0-9._-]+)*$`)
 
-	if validGCPBucketPath.MatchString(src) {
-		out.Source = "gcp"
-	} else if validS3Path.MatchString(src) {
-		out.Source = "aws"
-	} else {
-		return out, fmt.Errorf("Invalid Source: %s", source)
+	if !validGCPBucketPath.MatchString(src) && !validS3Path.MatchString(src) {
+		return fmt.Errorf("Invalid Source: %s", source)
 	}
 
-	return out, nil
+	if !validGCPBucketPath.MatchString(dst) && !validS3Path.MatchString(dst) {
+		return fmt.Errorf("Invalid Destination: %s", dst)
+	}
+
+	return nil
+}
+
+func TransferFromGcpToAWS(
+	ctx context.Context,
+	profile,
+	source, destination, tmpPath string) error {
+	err := gcp.GcsDownload(ctx, source, tmpPath)
+	if err != nil {
+		return err
+	}
+
+	err = aws.S3FolderUpload(ctx, profile, destination, tmpPath)
+
+	return nil
 }

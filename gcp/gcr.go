@@ -33,7 +33,7 @@ func HMACKeyCreate(ctx context.Context, serviceAccountEmail, projectID string) (
 	return *key, nil
 }
 
-func GcsDownload(ctx context.Context, destination, bucketName, destinationPath string) error {
+func GcsDownload(ctx context.Context, bucketName, destinationPath string) error {
 
 	localFolder := filepath.Join(destinationPath, bucketName)
 	if _, err := os.Stat(localFolder); os.IsNotExist(err) {
