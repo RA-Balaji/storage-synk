@@ -5,9 +5,12 @@ import (
 	"fmt"
 	"os"
 	"regexp"
+	"sync"
 
+	//awssdk "github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/RA-Balaji/storage-synk/aws"
 	"github.com/RA-Balaji/storage-synk/gcp"
+	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/spf13/cobra"
 )
 
@@ -90,7 +93,23 @@ func TransferFromGcpToAWS(
 		return err
 	}
 
-	err = aws.S3FolderUpload(ctx, profile, destination, tmpPath)
+	cfg, err := config.LoadDefaultConfig(context.TODO(),
+		config.WithSharedConfigProfile(profile))
+	if err != nil {
+		return err
+	}
+
+	var wg sync.WaitGroup
+	sem := make(chan struct{}, 10) // TODO: allow user to configure the concurrency limit?
+
+	err = aws.S3FolderUpload(ctx, cfg.Region, destination, tmpPath, &wg, sem)
+	if err != nil {
+		return err
+	}
+
+	// Wait for all uploads to finish
+	wg.Wait()
+	fmt.Println("Folder upload completed successfully!")
 
 	return nil
 }
