@@ -7,7 +7,6 @@ import (
 	"regexp"
 	"sync"
 
-	//awssdk "github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/RA-Balaji/storage-synk/aws"
 	"github.com/RA-Balaji/storage-synk/gcp"
 	"github.com/aws/aws-sdk-go-v2/config"
@@ -17,8 +16,9 @@ import (
 var csp, source, dest string
 
 const (
-	cspGcp = "gcp"
-	cspAws = "aws"
+	cspGcp   = "gcp"
+	cspAws   = "aws"
+	srcLocal = "local"
 )
 
 var cpCmd = &cobra.Command{
@@ -51,9 +51,12 @@ var cpCmd = &cobra.Command{
 		if source == cspGcp && destination == cspAws {
 			err = TransferFromGcpToAWS(
 				ctx, awsProfile, source, destination, tmpPath)
-			if err != nil {
-				return err
-			}
+		} else if source == srcLocal && destination == cspAws {
+			err = TransferFromLocalToAWS(
+				ctx, awsProfile, source, destination)
+		}
+		if err != nil {
+			return err
 		}
 
 		return nil
@@ -93,8 +96,7 @@ func TransferFromGcpToAWS(
 		return err
 	}
 
-	cfg, err := config.LoadDefaultConfig(context.TODO(),
-		config.WithSharedConfigProfile(profile))
+	cfg, err := config.LoadDefaultConfig(ctx, config.WithSharedConfigProfile(profile))
 	if err != nil {
 		return err
 	}
@@ -103,6 +105,35 @@ func TransferFromGcpToAWS(
 	sem := make(chan struct{}, 10) // TODO: allow user to configure the concurrency limit?
 
 	err = aws.S3FolderUpload(ctx, cfg.Region, destination, tmpPath, &wg, sem)
+	if err != nil {
+		return err
+	}
+
+	// Wait for all uploads to finish
+	wg.Wait()
+	fmt.Println("Folder upload completed successfully!")
+
+	return nil
+}
+
+func TransferFromLocalToAWS(
+	ctx context.Context,
+	profile, source, destination string) error {
+	_, err := os.Stat(source)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return fmt.Errorf("[path-%s-NotFound]", source)
+		}
+	}
+
+	cfg, err := config.LoadDefaultConfig(ctx, config.WithSharedConfigProfile(profile))
+	if err != nil {
+		return err
+	}
+
+	var wg sync.WaitGroup
+	sem := make(chan struct{}, 10) // TODO: allow user to configure the concurrency limit?
+	err = aws.S3FolderUpload(ctx, cfg.Region, destination, source, &wg, sem)
 	if err != nil {
 		return err
 	}
