@@ -144,3 +144,32 @@ func TransferFromLocalToAWS(
 
 	return nil
 }
+
+func TransferFromLocalToGCP(
+	ctx context.Context,
+	profile, source, destination string) error {
+	_, err := os.Stat(source)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return fmt.Errorf("[path-%s-NotFound]", source)
+		}
+	}
+
+	cfg, err := config.LoadDefaultConfig(ctx, config.WithSharedConfigProfile(profile))
+	if err != nil {
+		return err
+	}
+
+	var wg sync.WaitGroup
+	sem := make(chan struct{}, 10) // TODO: allow user to configure the concurrency limit?
+	err = aws.S3FolderUpload(ctx, cfg.Region, destination, source, &wg, sem)
+	if err != nil {
+		return err
+	}
+
+	// Wait for all uploads to finish
+	wg.Wait()
+	fmt.Println("Folder upload completed successfully!")
+
+	return nil
+}

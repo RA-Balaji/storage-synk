@@ -7,10 +7,10 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"sync"
 
+	"github.com/RA-Balaji/storage-synk/utils"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
@@ -148,7 +148,7 @@ func S3FolderUpload(
 
 			key := path[len(folderName)+1:]
 			// To convert '\' to '/'
-			if isWindowsOS() {
+			if utils.IsWindowsOS() {
 				key = convKeyToS3Format(key)
 			}
 			if err := S3FileUpload(ctx, region, bucketName, path, key); err != nil {
@@ -164,14 +164,6 @@ func S3FolderUpload(
 	}
 
 	return nil
-}
-
-func isWindowsOS() bool {
-	os := runtime.GOOS
-	if os == "windows" {
-		return true
-	}
-	return false
 }
 
 func convKeyToS3Format(key string) string {
